@@ -1,0 +1,116 @@
+stages:
+  - build_jar
+  - build_image
+  - test
+  - deploy
+
+#---------------------------------------------------------
+#    任务之前脚本
+#---------------------------------------------------------
+before_script:
+  - "chmod -R +x ./*"
+#---------------------------------------------------------
+#    开发或者测试环境下，develop分支，存在代码变化 maven构建gmc_app jar任务
+#---------------------------------------------------------
+buildjar:eosv-mobile-frontend:dev:
+  stage: build_jar
+  tags:
+    - gitrunner-dev
+  script:
+    - " cnpm install && npm run build:dev" #构建jar
+  artifacts:
+    paths:
+      - dist/*
+  only:
+    refs:
+      - develop
+    changes:
+      - src/*
+    variables:
+      - $ENV =~ /^EOSV_MOBILE_FRONTEND_DEV/
+
+buildjar:eosv-mobile-frontend:fat:
+  stage: build_jar
+  tags:
+    - gitrunner-dev
+  script:
+    - " cnpm install && npm run build:fat" #构建jar
+  artifacts:
+    paths:
+      - dist/*
+  only:
+    refs:
+      - develop
+    changes:
+      - src/*
+    variables:
+      - $ENV =~ /^EOSV_MOBILE_FRONTEND_FAT/
+
+#---------------------------------------------------------
+#    开发环境下，develop分支，存在代码变化,构建镜像,传送到私服。
+#---------------------------------------------------------
+buildimage:eosv-mobile-frontend:dev:
+  stage: build_image
+  tags:
+    - gitrunner-dev
+  script:
+    - "cd docker && ./build_images.sh 192.168.1.138:5000 dev" #参数1 镜像hub地址，参数2 环境
+  only:
+    refs:
+      - develop
+    changes:
+      - src/*
+    variables:
+      - $ENV =~ /^EOSV_MOBILE_FRONTEND_DEV/
+#---------------------------------------------------------
+#    测试环境下，develop分支，gmc-app存在代码变化,构建镜像,传送到私服。
+#---------------------------------------------------------
+buildimage:eosv-mobile-frontend:fat:
+  stage: build_image
+  tags:
+    - gitrunner-dev
+  script:
+    - "cd  docker && ./build_images.sh 192.168.1.138:5000 fat" #
+  only:
+    refs:
+      - develop
+    changes:
+      - src/*
+    variables:
+      - $ENV =~ /^EOSV_MOBILE_FRONTEND_FAT/
+#---------------------------------------------------------
+#    开发环境下，develop分支，gmc-app存在代码变化,发布到开发swarm集群。
+ # ./run_service.sh swarm集群remote地址 dockerhub地址
+#---------------------------------------------------------
+deploy:eosv-mobile-frontend:dev:
+  stage: deploy
+  tags:
+    - gitrunner-dev
+  script:
+    - "cd  docker && ./run_service.sh 192.168.1.35:2375 192.168.1.138:5000 dev"
+  only:
+    refs:
+      - develop
+    changes:
+      - src/*
+    variables:
+      - $ENV =~ /^EOSV_MOBILE_FRONTEND_DEV/
+#---------------------------------------------------------
+#    测试环境下，develop分支，gmc-app存在代码变化,发布到测试swarm集群。
+#---------------------------------------------------------
+deploy:eosv-mobile-frontend:fat:
+  stage: deploy
+  tags:
+    - gitrunner-dev
+  script:
+    - "cd  docker && ./run_service.sh 192.168.1.116:2375 192.168.1.138:5000 fat"
+  only:
+    refs:
+      - develop
+    changes:
+      - src/*
+    variables:
+      - $ENV =~ /^EOSV_MOBILE_FRONTEND_FAT/
+
+
+
